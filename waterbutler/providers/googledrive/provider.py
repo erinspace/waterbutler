@@ -19,6 +19,8 @@ from waterbutler.providers.googledrive.metadata import (GoogleDriveRevision,
                                                         GoogleDriveFolderMetadata,
                                                         GoogleDriveFileRevisionMetadata, )
 
+import logging
+logger = logging.getLogger(__name__)
 
 def clean_query(query: str):
     # Replace \ with \\ and ' with \'
@@ -34,6 +36,29 @@ class GoogleDrivePathPart(WaterButlerPathPart):
 
 class GoogleDrivePath(WaterButlerPath):
     PART_CLASS = GoogleDrivePathPart
+
+    def add_ext_maybe(self, prop):
+        if self.is_google_doc:
+            # How to get this extension for real? You don't have the raw data it seems like
+            ext = '.gdoc'
+            if ext not in prop:
+                prop += ext
+        return prop
+
+    @property
+    def is_google_doc(self):
+        # No idea how to do this for real
+        return True
+
+    @property
+    def materialized_path(self) -> str:
+        materialized = super(GoogleDrivePath, self).materialized_path
+        return self.add_ext_maybe(materialized)
+
+    @property
+    def path(self) -> str:
+        path = super(GoogleDrivePath, self).path
+        return self.add_ext_maybe(path)
 
 
 class GoogleDriveProvider(provider.BaseProvider):
@@ -90,6 +115,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         implicit_folder = path.endswith('/')
         parts = await self._resolve_path_to_ids(path)
         explicit_folder = parts[-1]['mimeType'] == self.FOLDER_MIME_TYPE
+        logger.info('WOOP Here are some parts I guess: {}'.format(parts[-1]))
         if parts[-1]['id'] is None or implicit_folder != explicit_folder:
             raise exceptions.NotFoundError(str(path))
 
@@ -110,6 +136,7 @@ class GoogleDriveProvider(provider.BaseProvider):
                               folder: bool=None) -> WaterButlerPath:
         # TODO Redo the logic here folders names ending in /s
         # Will probably break
+        logger.info('Identifier at start of revalidate path: {}'.format(base.identifier))
         if '/' in name.lstrip('/') and '%' not in name:
             # DAZ and MnC may pass unquoted names which break
             # if the name contains a / in it
@@ -485,6 +512,7 @@ class GoogleDriveProvider(provider.BaseProvider):
         while parts:
             current_part = parts.pop(0)
             part_name, part_is_folder = current_part[0], current_part[1]
+            logger.info('?~?~?~ Here is a part name! {}'.format(part_name))
             name, ext = os.path.splitext(part_name)
             if not part_is_folder and ext in ('.gdoc', '.gdraw', '.gslides', '.gsheet'):
                 gd_ext = utils.get_mimetype_from_ext(ext)

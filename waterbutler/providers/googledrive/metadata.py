@@ -78,7 +78,8 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
         path = '/' + self._path.raw_path
         if self.is_google_doc:
             ext = utils.get_extension(self.raw)
-            path += ext
+            if ext not in path:
+                path += ext
         return path
 
     @property
@@ -86,7 +87,8 @@ class GoogleDriveFileMetadata(BaseGoogleDriveMetadata, metadata.BaseFileMetadata
         materialized = str(self._path)
         if self.is_google_doc:
             ext = utils.get_extension(self.raw)
-            materialized += ext
+            if ext not in materialized:
+                materialized += ext
         return materialized
 
     @property
